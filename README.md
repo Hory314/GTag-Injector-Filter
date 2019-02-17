@@ -1,0 +1,1 @@
+# GTag Injector Filter for Tomcat
