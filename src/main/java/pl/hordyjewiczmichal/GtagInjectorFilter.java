@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.CharArrayWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
 
@@ -37,20 +38,27 @@ public class GtagInjectorFilter implements Filter
         if (((HttpServletRequest) request).getHeader("Accept").contains("text/html"))
         {
             filterChain.doFilter(request, wrapper);
-            response.setCharacterEncoding("UTF-8"); // required for static files
+            if (wrapper.getContentType().contains("text/html"))
+            {
+                response.setCharacterEncoding("UTF-8"); // required for static html files
 
-            String content = wrapper.getCaptureAsString();
-            // make replace below
-            String replacedContent = content.replaceFirst("<head([^>]*)>", "<head$1>\n" + getScript());
-            //
+                String content = wrapper.getCaptureAsString();
+                // make replace below
+                String replacedContent = content.replaceFirst("<head([^>]*)>", "<head$1>\n" + getScript());
+                //
 
-            CharArrayWriter writer = new CharArrayWriter();
-            writer.write(replacedContent);
+                CharArrayWriter writer = new CharArrayWriter();
+                writer.write(replacedContent);
 
-            PrintWriter out = response.getWriter();
-            response.setContentLengthLong(getFixedContentLength(replacedContent, response.getCharacterEncoding())); // must read content length from byte array
-            out.write(writer.toString());
-            out.close();
+                PrintWriter out = response.getWriter();
+                response.setContentLength(getFixedContentLength(replacedContent, response.getCharacterEncoding())); // must read content length from byte array
+                out.write(writer.toString());
+                out.close();
+            }
+            else
+            {
+                filterChain.doFilter(request, response);
+            }
         }
         else
         {
@@ -64,9 +72,9 @@ public class GtagInjectorFilter implements Filter
         // nothing to clean up
     }
 
-    private long getFixedContentLength(String content, String encoding) throws IOException
+    private int getFixedContentLength(String content, String encoding) throws IOException
     {
-        return (long) content.getBytes(encoding).length;
+        return content.getBytes(encoding).length;
     }
 
     private String getScript()
