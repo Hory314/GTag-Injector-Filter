@@ -37,7 +37,22 @@ public class GtagInjectorFilter implements Filter
         if (((HttpServletRequest) request).getHeader("Accept").contains("text/html"))
         {
             filterChain.doFilter(request, wrapper);
-            response.setCharacterEncoding("UTF-8"); // required for static files
+
+            String ct = response.getContentType();
+            boolean matches = false;
+            try
+            {
+                matches = ct.matches("text/html");
+            }
+            catch (Exception e)
+            {
+                // nothing to catch
+            }
+
+            if (matches)
+            {
+                response.setCharacterEncoding("UTF-8"); // required for static html files
+            }
 
             String content = wrapper.getCaptureAsString();
             // make replace below
@@ -48,9 +63,10 @@ public class GtagInjectorFilter implements Filter
             writer.write(replacedContent);
 
             PrintWriter out = response.getWriter();
-            response.setContentLengthLong(getFixedContentLength(replacedContent, response.getCharacterEncoding())); // must read content length from byte array
+            response.setContentLength(getFixedContentLength(replacedContent, response.getCharacterEncoding())); // must read content length from byte array
             out.write(writer.toString());
             out.close();
+
         }
         else
         {
@@ -64,9 +80,9 @@ public class GtagInjectorFilter implements Filter
         // nothing to clean up
     }
 
-    private long getFixedContentLength(String content, String encoding) throws IOException
+    private int getFixedContentLength(String content, String encoding) throws IOException
     {
-        return (long) content.getBytes(encoding).length;
+        return content.getBytes(encoding).length;
     }
 
     private String getScript()
